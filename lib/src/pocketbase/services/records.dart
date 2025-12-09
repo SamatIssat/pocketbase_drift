@@ -69,7 +69,7 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
         } else if (item.data['isNew'] == true) {
           // Prepare body for creation by removing server-generated and local-only fields.
           final createBody = Map<String, dynamic>.from(item.toJson());
-          createBody.remove('id');
+          //createBody.remove('id');
           createBody.remove('created');
           createBody.remove('updated');
           createBody.remove('collectionId');
