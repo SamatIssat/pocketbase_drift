@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:logging/logging.dart';
@@ -7,6 +8,10 @@ import 'package:logging/logging.dart';
 class ConnectivityService {
   ConnectivityService._() {
     _logger = Logger('ConnectivityService');
+    if (Platform.isLinux) {
+      isConnected = true;
+      return;
+    }
     _subscription = Connectivity().onConnectivityChanged.listen(_updateStatus);
     // Get the initial status.
     checkConnectivity();
@@ -43,6 +48,9 @@ class ConnectivityService {
 
   /// Checks the current connectivity and updates the status.
   Future<void> checkConnectivity() async {
+    if (Platform.isLinux) {
+      return;
+    }
     final result = await Connectivity().checkConnectivity();
     _updateStatus(result);
   }
@@ -64,6 +72,9 @@ class ConnectivityService {
   /// to ensure the stream is not stale.
   void resetSubscription() {
     _logger.info('Resetting connectivity stream subscription.');
+    if (Platform.isLinux) {
+      return;
+    }
     _subscription.cancel();
     _subscription = Connectivity().onConnectivityChanged.listen(_updateStatus);
     // Re-check immediately after resetting.
