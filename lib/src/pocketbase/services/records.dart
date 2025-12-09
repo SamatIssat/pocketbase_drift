@@ -70,14 +70,14 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
           // Prepare body for creation by removing server-generated and local-only fields.
           final createBody = Map<String, dynamic>.from(item.toJson());
           //createBody.remove('id');
-          createBody.remove('created');
-          createBody.remove('updated');
-          createBody.remove('collectionId');
-          createBody.remove('collectionName');
-          createBody.remove('expand');
-          createBody.remove('synced');
-          createBody.remove('isNew');
-          createBody.remove('deleted');
+          // createBody.remove('created');
+          // createBody.remove('updated');
+          // createBody.remove('collectionId');
+          // createBody.remove('collectionName');
+          // createBody.remove('expand');
+          // createBody.remove('synced');
+          // createBody.remove('isNew');
+          // createBody.remove('deleted');
 
           // Create the record on the server. RequestPolicy.cacheAndNetwork will
           // automatically save the new server-authoritative record to the local DB.
@@ -89,7 +89,7 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
           );
 
           // Clean up the old record that had the temporary ID.
-          await client.db.$delete(service, tempId);
+          //await client.db.$delete(service, tempId);
           client.logger.fine(
               'Successfully synced new item. Replaced temp ID $tempId with server ID ${newRecord.id}');
 
