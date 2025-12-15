@@ -7,11 +7,11 @@ import 'package:logging/logging.dart';
 /// A service that monitors the device's network connectivity status.
 class ConnectivityService {
   ConnectivityService._() {
+    _logger = Logger('ConnectivityService');
     if (Platform.isLinux) {
       isConnected = true;
       return;
     }
-    _logger = Logger('ConnectivityService');
     _subscription = Connectivity().onConnectivityChanged.listen(_updateStatus);
     // Get the initial status.
     checkConnectivity();
@@ -26,7 +26,7 @@ class ConnectivityService {
   }
 
   final _statusController = StreamController<bool>.broadcast();
-  late StreamSubscription<List<ConnectivityResult>> _subscription;
+  StreamSubscription<List<ConnectivityResult>>? _subscription;
   late final Logger _logger;
 
   /// A stream that emits `true` if the device is connected to a network,
@@ -68,21 +68,21 @@ class ConnectivityService {
   }
 
   /// Resets the connectivity stream subscription.
-  /// Useful when the app resumes from background or after a hot restart
+  /// Useful when the app resumes from background or hot restart
   /// to ensure the stream is not stale.
   void resetSubscription() {
-    _logger.info('Resetting connectivity stream subscription.');
     if (Platform.isLinux) {
       return;
     }
-    _subscription.cancel();
+    _logger.info('Resetting connectivity stream subscription.');
+    _subscription?.cancel();
     _subscription = Connectivity().onConnectivityChanged.listen(_updateStatus);
     // Re-check immediately after resetting.
     checkConnectivity();
   }
 
   void dispose() {
-    _subscription.cancel();
+    _subscription?.cancel();
     _statusController.close();
   }
 }
