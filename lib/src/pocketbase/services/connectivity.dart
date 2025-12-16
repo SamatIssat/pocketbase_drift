@@ -1,28 +1,32 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:logging/logging.dart';
 
 /// A service that monitors the device's network connectivity status.
-///
-/// This is a singleton because `connectivity_plus`'s `Connectivity()` is also
-/// a global singleton. Disposing and recreating wrappers around it causes
-/// instability in connectivity detection. Each `$PocketBase` client manages
-/// its own subscription to this singleton's [statusStream].
 class ConnectivityService {
   ConnectivityService._() {
     _logger = Logger('ConnectivityService');
+    if (Platform.isLinux) {
+      isConnected = true;
+      return;
+    }
     _subscription = Connectivity().onConnectivityChanged.listen(_updateStatus);
+    // Get the initial status.
+    checkConnectivity();
   }
 
-  // Singleton instance - lives for the app's lifetime
+  // Singleton instance
   static final ConnectivityService _instance = ConnectivityService._();
 
-  /// Factory constructor returns the singleton instance.
-  factory ConnectivityService() => _instance;
+  // Factory constructor to return the singleton instance
+  factory ConnectivityService() {
+    return _instance;
+  }
 
   final _statusController = StreamController<bool>.broadcast();
-  late StreamSubscription<List<ConnectivityResult>> _subscription;
+  StreamSubscription<List<ConnectivityResult>>? _subscription;
   late final Logger _logger;
 
   /// A stream that emits `true` if the device is connected to a network,
@@ -44,6 +48,9 @@ class ConnectivityService {
 
   /// Checks the current connectivity and updates the status.
   Future<void> checkConnectivity() async {
+    if (Platform.isLinux) {
+      return;
+    }
     final result = await Connectivity().checkConnectivity();
     _updateStatus(result);
   }
@@ -64,8 +71,18 @@ class ConnectivityService {
   /// Useful when the app resumes from background or after a hot restart
   /// to ensure the stream is not stale.
   void resetSubscription() {
+    if (Platform.isLinux) {
+      return;
+    }
     _logger.info('Resetting connectivity stream subscription.');
-    _subscription.cancel();
+    _subscription?.cancel();
     _subscription = Connectivity().onConnectivityChanged.listen(_updateStatus);
+    // Re-check immediately after resetting.
+    checkConnectivity();
+  }
+
+  void dispose() {
+    _subscription?.cancel();
+    _statusController.close();
   }
 }
