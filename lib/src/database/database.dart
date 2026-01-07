@@ -240,9 +240,9 @@ class DataBase extends _$DataBase {
         final targetCollection =
             allCollections.firstWhere((c) => c.id == targetCollectionId);
 
-        // Determine if this is a single relation (maxSelect == 1)
+        // Determine if this is a single relation (maxSelect <= 1 per PocketBase docs)
         final maxSelect = schemaField.data['maxSelect'];
-        final isSingle = maxSelect == 1;
+        final isSingle = maxSelect == null || maxSelect <= 1;
 
         relationMeta[targetField] = (
           collectionName: targetCollection.name,
@@ -452,8 +452,12 @@ class DataBase extends _$DataBase {
         case 'select':
         case 'file':
         case 'relation':
+          // Per PocketBase docs:
+          // - maxSelect <= 1 (including 0, 1, or null) = single-select (String)
+          // - maxSelect >= 2 = multi-select (List)
           final maxSelect = field.data['maxSelect'];
-          if (maxSelect != null && maxSelect == 1) {
+          final isSingleSelect = maxSelect == null || maxSelect <= 1;
+          if (isSingleSelect) {
             if (value is! String) {
               throw Exception(
                   'Field ${field.name} (single-select) must be a string, but got ${value.runtimeType}');

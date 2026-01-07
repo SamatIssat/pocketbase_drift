@@ -1,3 +1,13 @@
+## 0.3.11
+
+### Bug Fixes
+
+- **Fixed single-select validation and expansion** - Resolved an issue where `select`, `file`, and `relation` fields were incorrectly treated as multi-select (lists) when their `maxSelect` schema option was set to `0` or `null`. Per PocketBase documentation, `maxSelect <= 1` (including 0/null) indicates a single value (String), while `maxSelect >= 2` indicates multiple values (List). This fix ensures that fields with default or explicit 0/1 `maxSelect` are correctly validated and returned as single strings, preventing "Field must be a list" errors.
+
+### Dependencies
+
+- **Updated `pocketbase` to v0.23.1** - Includes a fix for the "all-in-one" OAuth2 flow that prevented successful re-authentication after a failed attempt.
+
 ## 0.3.10
 
 ### New Features

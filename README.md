@@ -79,7 +79,7 @@ Add the following packages to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  pocketbase_drift: ^0.3.10 # Use the latest version
+  pocketbase_drift: ^0.3.11 # Use the latest version
 ```
 
 ### 2. Initialize the Client
@@ -183,9 +183,18 @@ The `RequestPolicy` enum controls how data is fetched and synchronized between l
 | Real-time collaborative app | `networkFirst` | `networkFirst` |
 | Offline-first mobile app | `cacheAndNetwork` | `cacheAndNetwork` |
 | Instant feedback UI (notes, drafts) | `cacheFirst` | `cacheFirst` |
-| Financial transactions | `networkOnly` | `networkFirst` or `networkOnly` |
+| Financial transactions | `networkFirst` | `networkFirst` |
 | Analytics/telemetry | N/A | `cacheFirst` |
 | Local-only settings | `cacheOnly` | `cacheOnly` |
+
+#### Rationale
+
+-   **Real-time**: Uses `networkFirst` to ensure all users see the exact same state (e.g., chat, live editing).
+-   **Offline-first**: Uses `cacheAndNetwork` to provide a "it just works" experience, reads fall back to cache if offline and writes queue automatically.
+-   **Instant Feedback**: Uses `cacheFirst` to make the UI feel instantaneous (e.g., ticking a todo, "liking" a post). The app doesn't wait for the server; it updates the UI immediately and handles the sync silently in the background.
+-   **Financial Transactions**: Uses `networkFirst` because the server must validate the transaction before it's confirmed. Unlike `networkOnly`, this automatically updates your local cache on success, ensuring the user sees their new balance immediately without a manual refresh.
+-   **Analytics**: Uses `cacheFirst` for non-blocking "fire-and-forget" logging. It returns immediately so it never slows down the UI, while the background sync guarantees the event inevitably reaches the server even if the user is offline at that moment.
+-   **Local-only**: Uses `cacheOnly` to keep specific data (like device-specific settings) purely local, ensuring it never attempts to sync to the backend.
 
 ### Offline Support & Sync
 
