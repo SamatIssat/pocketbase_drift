@@ -14,6 +14,7 @@ class $PocketBase extends PocketBase with WidgetsBindingObserver {
     super.baseUrl, {
     required this.db,
     this.cacheTtl = const Duration(days: 60),
+    this.requestPolicy = RequestPolicy.cacheAndNetwork,
     super.lang,
     super.authStore,
     super.httpClientFactory,
@@ -30,6 +31,7 @@ class $PocketBase extends PocketBase with WidgetsBindingObserver {
     DatabaseConnection? connection,
     String dbName = 'pb_drift.db',
     Duration? cacheTtl = const Duration(days: 60),
+    RequestPolicy requestPolicy = RequestPolicy.cacheAndNetwork,
     Client Function()? httpClientFactory,
   }) {
     final db = DataBase(
@@ -40,6 +42,7 @@ class $PocketBase extends PocketBase with WidgetsBindingObserver {
       db: db,
       lang: lang,
       cacheTtl: cacheTtl,
+      requestPolicy: requestPolicy,
       authStore: authStore?..db = db,
       httpClientFactory: httpClientFactory,
     );
@@ -56,6 +59,30 @@ class $PocketBase extends PocketBase with WidgetsBindingObserver {
   ///
   /// If set to `null`, automatic cleanup is disabled and data is kept indefinitely.
   final Duration? cacheTtl;
+
+  /// The default [RequestPolicy] to use for all service methods.
+  ///
+  /// This policy is used for all CRUD operations and queries unless
+  /// explicitly overridden in the method call. Defaults to
+  /// `RequestPolicy.cacheAndNetwork`.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Set a global default policy
+  /// final client = $PocketBase.database(
+  ///   'http://127.0.0.1:8090',
+  ///   requestPolicy: RequestPolicy.networkFirst,
+  /// );
+  ///
+  /// // All methods will now default to networkFirst
+  /// await client.collection('posts').getFullList(); // Uses networkFirst
+  ///
+  /// // You can still override per-call
+  /// await client.collection('posts').getFullList(
+  ///   requestPolicy: RequestPolicy.cacheOnly, // Overrides global default
+  /// );
+  /// ```
+  final RequestPolicy requestPolicy;
 
   set logging(bool enable) {
     hierarchicalLoggingEnabled = true;

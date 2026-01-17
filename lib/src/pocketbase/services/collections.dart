@@ -17,9 +17,10 @@ class $CollectionService extends CollectionService
     String? fields,
     Map<String, dynamic> query = const {},
     Map<String, String> headers = const {},
-    RequestPolicy requestPolicy = RequestPolicy.cacheAndNetwork,
+    RequestPolicy? requestPolicy,
   }) async {
-    return requestPolicy.fetch<CollectionModel>(
+    final policy = resolvePolicy(requestPolicy);
+    return policy.fetch<CollectionModel>(
       label: service,
       client: client,
       remote: () {
@@ -70,9 +71,10 @@ class $CollectionService extends CollectionService
     String? fields,
     Map<String, dynamic> query = const {},
     Map<String, String> headers = const {},
-    RequestPolicy requestPolicy = RequestPolicy.cacheAndNetwork,
+    RequestPolicy? requestPolicy,
   }) {
-    return requestPolicy.fetch<CollectionModel>(
+    final policy = resolvePolicy(requestPolicy);
+    return policy.fetch<CollectionModel>(
       label: service,
       client: client,
       remote: () {
@@ -83,7 +85,7 @@ class $CollectionService extends CollectionService
           fields: fields,
           query: query,
           headers: headers,
-          requestPolicy: requestPolicy,
+          requestPolicy: policy,
         ).then((result) {
           if (result.items.isEmpty) {
             throw ClientException(

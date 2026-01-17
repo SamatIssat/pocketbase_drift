@@ -1,3 +1,19 @@
+## 0.3.12
+
+### New Features
+
+- **Global Request Policy** - Added a `requestPolicy` parameter to the `$PocketBase` client that sets a default policy for all service methods. This allows you to configure the offline-first behavior globally instead of passing it to every method call.
+  - Defaults to `RequestPolicy.cacheAndNetwork`
+  - Can be overridden per-call by passing an explicit `requestPolicy` to any method
+  - All method `requestPolicy` parameters are now nullable (omit to use the global default)
+
+### Bug Fixes
+
+- **Fixed duplicate record creation with realtime subscriptions** - Resolved a critical issue where creating a record with `RequestPolicy.cacheAndNetwork` while using `watchRecords()` or other realtime subscriptions could result in duplicate records being created locally. This occurred when PocketBase ignored/replaced the client-provided ID (e.g., due to custom hooks) and generated its own ID. The code now detects ID mismatches between the sent and received ID, and uses the server's ID to prevent duplicates.
+  - Added ID mismatch detection in `_createCacheAndNetwork` 
+  - Added ID mismatch handling in `_tryCreateOnServer` for background sync
+  - A warning is now logged when the server doesn't use the provided ID
+
 ## 0.3.11
 
 ### Bug Fixes

@@ -167,11 +167,12 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
     String id, {
     String? expand,
     String? fields,
-    RequestPolicy requestPolicy = RequestPolicy.cacheAndNetwork,
+    RequestPolicy? requestPolicy,
   }) {
+    final policy = resolvePolicy(requestPolicy);
     final controller = StreamController<RecordModel?>(
       onListen: () async {
-        if (requestPolicy.isNetwork) {
+        if (policy.isNetwork) {
           try {
             await subscribe(id, (e) {});
           } catch (e) {
@@ -180,10 +181,10 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
           }
         }
         await getOneOrNull(id,
-            expand: expand, fields: fields, requestPolicy: requestPolicy);
+            expand: expand, fields: fields, requestPolicy: policy);
       },
       onCancel: () async {
-        if (requestPolicy.isNetwork) {
+        if (policy.isNetwork) {
           try {
             await unsubscribe(id);
           } catch (e) {
@@ -213,11 +214,12 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
     String? sort,
     int? limit,
     String? fields,
-    RequestPolicy requestPolicy = RequestPolicy.cacheAndNetwork,
+    RequestPolicy? requestPolicy,
   }) {
+    final policy = resolvePolicy(requestPolicy);
     final controller = StreamController<List<RecordModel>>(
       onListen: () async {
-        if (requestPolicy.isNetwork) {
+        if (policy.isNetwork) {
           try {
             await subscribe('*', (e) {});
           } catch (e) {
@@ -226,17 +228,17 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
           }
         }
         final items = await getFullList(
-          requestPolicy: requestPolicy,
+          requestPolicy: policy,
           filter: filter,
           expand: expand,
           sort: sort,
           fields: fields,
         );
         client.logger.fine(
-            'Realtime initial full list for "$service" [${requestPolicy.name}]: ${items.length} items');
+            'Realtime initial full list for "$service" [${policy.name}]: ${items.length} items');
       },
       onCancel: () async {
-        if (requestPolicy.isNetwork) {
+        if (policy.isNetwork) {
           try {
             await unsubscribe('*');
           } catch (e) {

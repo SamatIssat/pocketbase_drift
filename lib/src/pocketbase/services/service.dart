@@ -11,6 +11,14 @@ mixin ServiceMixin<M extends Jsonable> on BaseCrudService<M> {
   @override
   $PocketBase get client;
 
+  /// Resolves the effective request policy to use.
+  ///
+  /// If [methodPolicy] is explicitly provided, it takes precedence.
+  /// Otherwise, the client's global [requestPolicy] is used.
+  @protected
+  RequestPolicy resolvePolicy(RequestPolicy? methodPolicy) =>
+      methodPolicy ?? client.requestPolicy;
+
   /// Private helper to read MultipartFiles into a memory buffer.
   /// This is necessary because a stream can only be read once.
   Future<List<(String field, String? filename, Uint8List bytes)>> _bufferFiles(
@@ -102,9 +110,10 @@ mixin ServiceMixin<M extends Jsonable> on BaseCrudService<M> {
     String? fields,
     Map<String, dynamic> query = const {},
     Map<String, String> headers = const {},
-    RequestPolicy requestPolicy = RequestPolicy.cacheAndNetwork,
+    RequestPolicy? requestPolicy,
   }) async {
-    return requestPolicy.fetch<M>(
+    final policy = resolvePolicy(requestPolicy);
+    return policy.fetch<M>(
       label: service,
       client: client,
       remote: () => super.getOne(
@@ -145,12 +154,13 @@ mixin ServiceMixin<M extends Jsonable> on BaseCrudService<M> {
     String? fields,
     Map<String, dynamic> query = const {},
     Map<String, String> headers = const {},
-    RequestPolicy requestPolicy = RequestPolicy.cacheAndNetwork,
+    RequestPolicy? requestPolicy,
     Duration timeout = const Duration(seconds: 30),
   }) async {
+    final policy = resolvePolicy(requestPolicy);
     // For cache-only or network-only, use the standard flow
-    if (requestPolicy == RequestPolicy.cacheOnly ||
-        requestPolicy == RequestPolicy.networkOnly) {
+    if (policy == RequestPolicy.cacheOnly ||
+        policy == RequestPolicy.networkOnly) {
       return _getFullListStandard(
         batch: batch,
         expand: expand,
@@ -159,7 +169,7 @@ mixin ServiceMixin<M extends Jsonable> on BaseCrudService<M> {
         fields: fields,
         query: query,
         headers: headers,
-        requestPolicy: requestPolicy,
+        requestPolicy: policy,
         timeout: timeout,
       );
     }
@@ -178,7 +188,7 @@ mixin ServiceMixin<M extends Jsonable> on BaseCrudService<M> {
         expand: expand,
         query: query,
         headers: headers,
-        requestPolicy: requestPolicy,
+        requestPolicy: policy,
         timeout: timeout,
       ).then((list) {
         result.addAll(list.items);
@@ -259,9 +269,10 @@ mixin ServiceMixin<M extends Jsonable> on BaseCrudService<M> {
     String? fields,
     Map<String, dynamic> query = const {},
     Map<String, String> headers = const {},
-    RequestPolicy requestPolicy = RequestPolicy.cacheAndNetwork,
+    RequestPolicy? requestPolicy,
   }) {
-    return requestPolicy.fetch<M>(
+    final policy = resolvePolicy(requestPolicy);
+    return policy.fetch<M>(
       label: service,
       client: client,
       remote: () {
@@ -272,7 +283,7 @@ mixin ServiceMixin<M extends Jsonable> on BaseCrudService<M> {
           fields: fields,
           query: query,
           headers: headers,
-          requestPolicy: requestPolicy,
+          requestPolicy: policy,
         ).then((result) {
           if (result.items.isEmpty) {
             throw ClientException(
@@ -313,8 +324,9 @@ mixin ServiceMixin<M extends Jsonable> on BaseCrudService<M> {
     String? fields,
     Map<String, dynamic> query = const {},
     Map<String, String> headers = const {},
-    RequestPolicy requestPolicy = RequestPolicy.cacheAndNetwork,
+    RequestPolicy? requestPolicy,
   }) async {
+    final policy = resolvePolicy(requestPolicy);
     try {
       return getFirstListItem(
         filter,
@@ -322,7 +334,7 @@ mixin ServiceMixin<M extends Jsonable> on BaseCrudService<M> {
         fields: fields,
         query: query,
         headers: headers,
-        requestPolicy: requestPolicy,
+        requestPolicy: policy,
       );
     } catch (e) {
       client.logger.fine(
@@ -343,10 +355,11 @@ mixin ServiceMixin<M extends Jsonable> on BaseCrudService<M> {
     String? fields,
     Map<String, dynamic> query = const {},
     Map<String, String> headers = const {},
-    RequestPolicy requestPolicy = RequestPolicy.cacheAndNetwork,
+    RequestPolicy? requestPolicy,
     Duration timeout = const Duration(seconds: 30),
   }) async {
-    return requestPolicy.fetch<ResultList<M>>(
+    final policy = resolvePolicy(requestPolicy);
+    return policy.fetch<ResultList<M>>(
       label: service,
       client: client,
       remote: () => super
@@ -401,12 +414,13 @@ mixin ServiceMixin<M extends Jsonable> on BaseCrudService<M> {
     String? fields,
     Map<String, dynamic> query = const {},
     Map<String, String> headers = const {},
-    RequestPolicy requestPolicy = RequestPolicy.cacheAndNetwork,
+    RequestPolicy? requestPolicy,
   }) async {
+    final policy = resolvePolicy(requestPolicy);
     try {
       final result = await getOne(
         id,
-        requestPolicy: requestPolicy,
+        requestPolicy: policy,
         expand: expand,
         fields: fields,
         query: query,
@@ -443,7 +457,7 @@ mixin ServiceMixin<M extends Jsonable> on BaseCrudService<M> {
 
   @override
   Future<M> create({
-    RequestPolicy requestPolicy = RequestPolicy.cacheAndNetwork,
+    RequestPolicy? requestPolicy,
     Map<String, dynamic> body = const {},
     Map<String, dynamic> query = const {},
     List<http.MultipartFile> files = const [],
@@ -451,7 +465,8 @@ mixin ServiceMixin<M extends Jsonable> on BaseCrudService<M> {
     String? expand,
     String? fields,
   }) async {
-    return switch (requestPolicy) {
+    final policy = resolvePolicy(requestPolicy);
+    return switch (policy) {
       RequestPolicy.cacheOnly =>
         _createCacheOnly(body, query, files, headers, expand, fields),
       RequestPolicy.networkOnly =>
@@ -590,25 +605,40 @@ mixin ServiceMixin<M extends Jsonable> on BaseCrudService<M> {
             .toList(),
       );
 
-      // Update local record to mark as synced and update with server data (including renamed files)
+      // Check if server used our ID or generated a new one
       final serverRecordData = serverRecord.toJson();
-      await client.db.$update(
-        service,
-        localId,
-        {
-          ...serverRecordData,
-          'synced': true,
-          'isNew': false,
-        },
-      );
+      final serverId = serverRecordData['id'] as String?;
+
+      if (serverId != null && serverId != localId) {
+        // Server rejected our ID - delete the old local record and create new one
+        client.logger.warning('Server did not use provided ID for $service. '
+            'Sent: $localId, Received: $serverId. Updating local record.');
+        await client.db.$delete(service, localId);
+        await client.db.$create(
+          service,
+          {
+            ...serverRecordData,
+            'synced': true,
+            'isNew': false,
+          },
+        );
+      } else {
+        // Server used our ID - just update the local record
+        await client.db.$update(
+          service,
+          localId,
+          {
+            ...serverRecordData,
+            'synced': true,
+            'isNew': false,
+          },
+        );
+      }
 
       // Cache the files with their server-generated names
       if (bufferedFiles.isNotEmpty) {
-        final serverRecordId = serverRecordData['id'] as String?;
-        if (serverRecordId != null) {
-          await _cacheFilesToDb(
-              serverRecordId, serverRecordData, bufferedFiles);
-        }
+        final finalId = serverId ?? localId;
+        await _cacheFilesToDb(finalId, serverRecordData, bufferedFiles);
       }
 
       client.logger
@@ -759,12 +789,24 @@ mixin ServiceMixin<M extends Jsonable> on BaseCrudService<M> {
       }
     }
 
-    // Save to cache with our local ID
+    // If the server returned a different ID than what we sent (indicating our
+    // localId was rejected/overwritten), use the server's ID instead.
+    final serverId = recordDataForCache['id'] as String?;
+    final finalId = (savedToNetwork && serverId != null && serverId != localId)
+        ? serverId
+        : localId;
+
+    if (savedToNetwork && serverId != null && serverId != localId) {
+      client.logger.warning('Server did not use provided ID for $service. '
+          'Sent: $localId, Received: $serverId. Using server ID.');
+    }
+
+    // Save to cache with the determined ID
     final localRecordData = await client.db.$create(
       service,
       {
         ...recordDataForCache,
-        'id': localId,
+        'id': finalId,
         'deleted': false,
         'synced': savedToNetwork,
         'isNew': !savedToNetwork,
@@ -773,7 +815,7 @@ mixin ServiceMixin<M extends Jsonable> on BaseCrudService<M> {
     );
 
     if (bufferedFiles.isNotEmpty) {
-      await _cacheFilesToDb(localId, localRecordData, bufferedFiles);
+      await _cacheFilesToDb(finalId, localRecordData, bufferedFiles);
     }
     result = itemFactoryFunc(localRecordData);
 
@@ -783,7 +825,7 @@ mixin ServiceMixin<M extends Jsonable> on BaseCrudService<M> {
   @override
   Future<M> update(
     String id, {
-    RequestPolicy requestPolicy = RequestPolicy.cacheAndNetwork,
+    RequestPolicy? requestPolicy,
     Map<String, dynamic> body = const {},
     Map<String, dynamic> query = const {},
     List<http.MultipartFile> files = const [],
@@ -791,7 +833,8 @@ mixin ServiceMixin<M extends Jsonable> on BaseCrudService<M> {
     String? expand,
     String? fields,
   }) async {
-    return switch (requestPolicy) {
+    final policy = resolvePolicy(requestPolicy);
+    return switch (policy) {
       RequestPolicy.cacheOnly =>
         _updateCacheOnly(id, body, query, files, headers, expand, fields),
       RequestPolicy.networkOnly =>
@@ -1100,12 +1143,13 @@ mixin ServiceMixin<M extends Jsonable> on BaseCrudService<M> {
   @override
   Future<void> delete(
     String id, {
-    RequestPolicy requestPolicy = RequestPolicy.cacheAndNetwork,
+    RequestPolicy? requestPolicy,
     Map<String, dynamic> body = const {},
     Map<String, dynamic> query = const {},
     Map<String, String> headers = const {},
   }) async {
-    return switch (requestPolicy) {
+    final policy = resolvePolicy(requestPolicy);
+    return switch (policy) {
       RequestPolicy.cacheOnly => _deleteCacheOnly(id, body, query, headers),
       RequestPolicy.networkOnly => _deleteNetworkOnly(id, body, query, headers),
       RequestPolicy.cacheFirst => _deleteCacheFirst(id, body, query, headers),

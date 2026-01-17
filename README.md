@@ -5,7 +5,7 @@ A powerful, offline-first Flutter client for [PocketBase](https://pocketbase.io)
 This library extends the official PocketBase Dart SDK to provide a seamless offline-first experience. It automatically caches data from your PocketBase instance into a local SQLite database, allowing your app to remain fully functional even without a network connection. Changes made while offline are queued and automatically retried when connectivity is restored.
 
 <details>
-<summary><strong>📑 Table of Contents</strong></summary>
+<summary><h2>📑 Table of Contents</h2></summary>
 
 - [Features](#features)
 - [Getting Started](#getting-started)
@@ -18,6 +18,7 @@ This library extends the official PocketBase Dart SDK to provide a seamless offl
     - [For Read Operations (GET)](#for-read-operations-get)
     - [For Write Operations (CREATE/UPDATE/DELETE)](#for-write-operations-createupdatedelete)
   - [Choosing the Right Policy](#choosing-the-right-policy)
+  - [Global Request Policy](#global-request-policy)
   - [Offline Support & Sync](#offline-support--sync)
 - [Usage Examples](#usage-examples)
   - [Fetching Records](#fetching-records)
@@ -79,7 +80,7 @@ Add the following packages to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  pocketbase_drift: ^0.3.11 # Use the latest version
+  pocketbase_drift: ^0.3.12 # Use the latest version
 ```
 
 ### 2. Initialize the Client
@@ -195,6 +196,35 @@ The `RequestPolicy` enum controls how data is fetched and synchronized between l
 -   **Financial Transactions**: Uses `networkFirst` because the server must validate the transaction before it's confirmed. Unlike `networkOnly`, this automatically updates your local cache on success, ensuring the user sees their new balance immediately without a manual refresh.
 -   **Analytics**: Uses `cacheFirst` for non-blocking "fire-and-forget" logging. It returns immediately so it never slows down the UI, while the background sync guarantees the event inevitably reaches the server even if the user is offline at that moment.
 -   **Local-only**: Uses `cacheOnly` to keep specific data (like device-specific settings) purely local, ensuring it never attempts to sync to the backend.
+
+### Global Request Policy
+
+Instead of passing a `requestPolicy` to every method call, you can set a global default on the client:
+
+```dart
+// Set a global default policy
+final client = $PocketBase.database(
+  'http://127.0.0.1:8090',
+  requestPolicy: RequestPolicy.networkFirst,
+);
+
+// All methods will now default to networkFirst
+await client.collection('posts').getFullList(); // Uses networkFirst
+await client.collection('posts').create(body: {...}); // Uses networkFirst
+```
+
+You can still override the global default on a per-call basis:
+
+```dart
+// Override for a specific call
+await client.collection('posts').getFullList(
+  requestPolicy: RequestPolicy.cacheOnly, // Overrides global default
+);
+```
+
+The resolution order is:
+1. **Explicit method parameter** (if provided)
+2. **Client's global `requestPolicy`** (defaults to `cacheAndNetwork`)
 
 ### Offline Support & Sync
 
