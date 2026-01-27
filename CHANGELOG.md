@@ -1,3 +1,27 @@
+## 0.3.13
+
+### Bug Fixes
+
+- **Fixed file field names being null when saving offline** - Resolved a critical issue where creating or updating a record with files while offline (using `cacheAndNetwork` policy) would result in file field names being saved as `null` or empty in the local database. The `_prepareCacheOnlyBody()` method is now called before network attempts, ensuring file field names and blobs are properly cached regardless of network availability.
+
+- **Fixed files not syncing to server on connectivity restore** - Files attached to records created offline were not being uploaded when connectivity was restored and `retryLocal()` ran. The sync mechanism now:
+  - Retrieves cached file blobs from the local database
+  - Identifies file fields from the collection schema
+  - Includes files as `MultipartFile` attachments when syncing pending creates/updates to the server
+  - Added `getFilesForRecord()` method to the database for retrieving all cached files for a record
+
+- **Improved file retrieval fallback behavior** - File retrieval now follows the "stale data is better than no data" principle for offline-first apps:
+  - `cacheOnly` with expired cache: Now returns the expired cached file instead of throwing
+  - `cacheAndNetwork` with expired cache + network failure: Now falls back to returning the expired cached file instead of throwing a network error
+  - `cacheOnly` with no cache: Now throws a descriptive error message
+  - Added informative logging for cache expiration and fallback scenarios
+
+### Tests
+
+- Added 3 new tests for offline file creation with network failure simulation
+- Added 1 test for file sync on connectivity restore
+- Added 3 tests for file retrieval fallback behavior
+
 ## 0.3.12
 
 ### New Features
