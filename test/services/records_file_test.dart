@@ -348,6 +348,82 @@ void main() {
         expect(utf8.decode(cachedFile2!.data), testFile2Content);
       });
     });
+
+    group('file retrieval fallback behavior', () {
+      test('cacheOnly returns expired cached file instead of throwing',
+          () async {
+        // Manually cache a file with expired timestamp
+        const testFileName = 'expired_file.txt';
+        const testContent = 'This is expired content';
+        final testBytes = Uint8List.fromList(utf8.encode(testContent));
+        const testRecordId = 'test_record_expired';
+
+        await client.db.setFile(
+          testRecordId,
+          testFileName,
+          testBytes,
+          expires: DateTime.now()
+              .subtract(const Duration(hours: 1)), // Already expired
+        );
+
+        // Request with cacheOnly should return expired file, not throw
+        final retrievedBytes = await client.files.getFileData(
+          recordId: testRecordId,
+          recordCollectionName: 'test',
+          filename: testFileName,
+          requestPolicy: RequestPolicy.cacheOnly,
+        );
+
+        expect(utf8.decode(retrievedBytes), testContent);
+      });
+
+      test('cacheAndNetwork returns expired cache when network fails',
+          () async {
+        // Create a client with failing network
+        final failingClient = $PocketBase.database(
+          'http://127.0.0.1:8888',
+          inMemory: true,
+          httpClientFactory: () => _FailingHttpClient(),
+        );
+
+        // Manually cache a file with expired timestamp
+        const testFileName = 'expired_network_fallback.txt';
+        const testContent = 'Fallback content';
+        final testBytes = Uint8List.fromList(utf8.encode(testContent));
+        const testRecordId = 'test_record_fallback';
+
+        await failingClient.db.setFile(
+          testRecordId,
+          testFileName,
+          testBytes,
+          expires: DateTime.now()
+              .subtract(const Duration(hours: 1)), // Already expired
+        );
+
+        // Request with cacheAndNetwork should try network, fail, then return expired cache
+        final retrievedBytes = await failingClient.files.getFileData(
+          recordId: testRecordId,
+          recordCollectionName: 'test',
+          filename: testFileName,
+          requestPolicy: RequestPolicy.cacheAndNetwork,
+        );
+
+        expect(utf8.decode(retrievedBytes), testContent);
+      });
+
+      test('cacheOnly throws when no cached file exists', () async {
+        // Request a file that doesn't exist in cache with cacheOnly
+        expect(
+          () => client.files.getFileData(
+            recordId: 'nonexistent_record',
+            recordCollectionName: 'test',
+            filename: 'nonexistent_file.txt',
+            requestPolicy: RequestPolicy.cacheOnly,
+          ),
+          throwsException,
+        );
+      });
+    });
   });
 }
 
