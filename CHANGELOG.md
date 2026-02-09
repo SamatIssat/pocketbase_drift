@@ -1,3 +1,16 @@
+## 0.3.15
+
+### New Features
+
+- **Configurable Sync Retry Count** - Added `localSyncRetryCount` parameter to `$PocketBase` and `$PocketBase.database` (default: 5). This allows developers to control how many times a record update/create should be retried before being considered permanently failed.
+
+### Bug Fixes
+
+- **Robust Handling of Stuck Records** - Resolved an issue where records suffering from validation errors (including "orphaned" records referencing deleted parents) would retry indefinitely, causing battery drain and blocking the sync queue.
+  - All `400 Bad Request` errors (validation failures, orphans, etc.) now increment a retry counter on the local record.
+  - Once the `localSyncRetryCount` is exceeded, the local record is automatically deleted to unblock the sync queue.
+  - Useful for cleaning up local state that has become invalid relative to the server (e.g., a local comment on a post that was deleted on the server).
+
 ## 0.3.14
 
 ### Bug Fixes

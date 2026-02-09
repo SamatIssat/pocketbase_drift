@@ -15,6 +15,7 @@ class $PocketBase extends PocketBase with WidgetsBindingObserver {
     required this.db,
     this.cacheTtl = const Duration(days: 60),
     this.requestPolicy = RequestPolicy.cacheAndNetwork,
+    this.localSyncRetryCount = 5,
     super.lang,
     super.authStore,
     super.httpClientFactory,
@@ -33,6 +34,7 @@ class $PocketBase extends PocketBase with WidgetsBindingObserver {
     Duration? cacheTtl = const Duration(days: 60),
     RequestPolicy requestPolicy = RequestPolicy.cacheAndNetwork,
     Client Function()? httpClientFactory,
+    int localSyncRetryCount = 5,
   }) {
     final db = DataBase(
       connection ?? connect(dbName, inMemory: inMemory),
@@ -45,6 +47,7 @@ class $PocketBase extends PocketBase with WidgetsBindingObserver {
       requestPolicy: requestPolicy,
       authStore: authStore?..db = db,
       httpClientFactory: httpClientFactory,
+      localSyncRetryCount: localSyncRetryCount,
     );
     return client;
   }
@@ -59,6 +62,12 @@ class $PocketBase extends PocketBase with WidgetsBindingObserver {
   ///
   /// If set to `null`, automatic cleanup is disabled and data is kept indefinitely.
   final Duration? cacheTtl;
+
+  /// The number of times to retry a failed local sync before deleting the record.
+  ///
+  /// This applies to records that fail server validation (e.g. 400 errors).
+  /// Default is 5.
+  final int localSyncRetryCount;
 
   /// The default [RequestPolicy] to use for all service methods.
   ///

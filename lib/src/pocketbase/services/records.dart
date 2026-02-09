@@ -3,7 +3,8 @@ import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 
-import '../../../pocketbase_drift.dart';
+import 'package:pocketbase/pocketbase.dart';
+import 'package:pocketbase_drift/pocketbase_drift.dart';
 
 class $RecordService extends RecordService with ServiceMixin<RecordModel> {
   $RecordService(this.client, this.service) : super(client, service);
@@ -69,7 +70,7 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
         if (item.data['deleted'] == true) {
           await delete(
             tempId,
-            requestPolicy: RequestPolicy.cacheAndNetwork,
+            requestPolicy: RequestPolicy.networkFirst,
             query: query,
             headers: headers,
           );
@@ -103,7 +104,7 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
           await create(
             body: createBody,
             files: files,
-            requestPolicy: RequestPolicy.cacheAndNetwork,
+            requestPolicy: RequestPolicy.networkFirst,
             query: query,
             headers: headers,
           );
@@ -126,12 +127,61 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
             tempId,
             body: updateBody,
             files: files,
-            requestPolicy: RequestPolicy.cacheAndNetwork,
+            requestPolicy: RequestPolicy.networkFirst,
             query: query,
             headers: headers,
           );
           client.logger.fine(
               'Successfully synced update for item $tempId (${files.length} files)');
+        }
+      } on ClientException catch (e) {
+        // Handle 400 Bad Request errors specifically (Validation errors, Orphans, etc.)
+        if (e.statusCode == 400) {
+          final response = e.response;
+          final responseStr = response.toString();
+
+          // Implement a max-retry mechanism for all 400 errors
+          var retryCount = (item.data['retryCount'] as num?)?.toInt() ?? 0;
+          retryCount++;
+
+          final maxRetries = client.localSyncRetryCount;
+
+          if (retryCount >= maxRetries) {
+            client.logger.severe(
+                'Sync failed for item ${item.id}: Exceeded max retries ($retryCount/$maxRetries). '
+                'Deleting stuck record. Error: $responseStr',
+                e);
+
+            // Delete the stuck record locally to unblock the queue
+            await client.db.$delete(service, item.id);
+            continue;
+          }
+
+          // Verify if record still exists before updating to avoid race conditions
+          final exists = await client.db
+              .$query(service, filter: "id = '${item.id}'")
+              .getSingleOrNull();
+          if (exists != null) {
+            client.logger.warning(
+                'Sync failed for item ${item.id} (Attempt $retryCount/$maxRetries). Error: $responseStr',
+                e);
+
+            // Update the retry count in the local record
+            // We use direct DB update to avoid triggering another "isNew" or Sync event
+            await client.db.$update(
+              service,
+              item.id,
+              {
+                ...item.data,
+                'retryCount': retryCount,
+              },
+              validate: false,
+            );
+          }
+        } else {
+          client.logger.warning(
+              'Error retrying local change for item ${item.id} (Status: ${e.statusCode})',
+              e);
         }
       } catch (e) {
         client.logger
