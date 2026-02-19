@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 
-import 'package:pocketbase/pocketbase.dart';
 import 'package:pocketbase_drift/pocketbase_drift.dart';
 
 class $RecordService extends RecordService with ServiceMixin<RecordModel> {
@@ -313,11 +312,12 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
     RequestPolicy? requestPolicy,
   }) {
     final policy = resolvePolicy(requestPolicy);
+    UnsubscribeFunc? unsub;
     final controller = StreamController<RecordModel?>(
       onListen: () async {
         if (policy.isNetwork) {
           try {
-            await subscribe(id, (e) {});
+            unsub = await subscribe(id, (e) {});
           } catch (e) {
             client.logger
                 .warning('Error subscribing to record $service/$id', e);
@@ -329,7 +329,7 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
       onCancel: () async {
         if (policy.isNetwork) {
           try {
-            await unsubscribe(id);
+            await unsub?.call();
           } catch (e) {
             client.logger.fine(
                 'Error unsubscribing from record $service/$id (may be intentional)',
@@ -360,11 +360,12 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
     RequestPolicy? requestPolicy,
   }) {
     final policy = resolvePolicy(requestPolicy);
+    UnsubscribeFunc? unsub;
     final controller = StreamController<List<RecordModel>>(
       onListen: () async {
         if (policy.isNetwork) {
           try {
-            await subscribe('*', (e) {});
+            unsub = await subscribe('*', (e) {});
           } catch (e) {
             client.logger
                 .warning('Error subscribing to collection $service', e);
@@ -383,7 +384,7 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
       onCancel: () async {
         if (policy.isNetwork) {
           try {
-            await unsubscribe('*');
+            await unsub?.call();
           } catch (e) {
             client.logger.fine(
                 'Error unsubscribing from collection $service (may be intentional)',

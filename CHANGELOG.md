@@ -1,3 +1,9 @@
+## 0.3.16
+
+### Bug Fixes
+
+- **Fixed realtime subscriptions interfering with each other ([#12](https://github.com/DrDejaVuNG/pocketbase_drift/issues/12))** - Resolved an issue where multiple `watchRecords` or `watchRecord` streams subscribed to the same collection would break each other's realtime updates. When one stream was cancelled (e.g., navigating away from a tab), it called `unsubscribe('*')` which removed **all** listeners for that topic — including those belonging to other active streams. The fix stores the targeted `UnsubscribeFunc` returned by `subscribe()` and calls that on cancel instead, ensuring only the specific listener is removed while leaving other subscriptions intact.
+
 ## 0.3.15
 
 ### New Features
