@@ -1,3 +1,9 @@
+## 0.3.17
+
+### Dependencies
+
+- **Updated package dependencies** - Updated core dependencies including `drift`, `sqlite3`, and others.
+
 ## 0.3.16
 
 ### Bug Fixes
