@@ -1,3 +1,12 @@
+## 0.4.0
+
+**BREAKING CHANGES**: Method names have been updated for consistency and clarity.
+
+### Breaking Changes
+
+- **Renamed `cacheSchema` to `setSchema`**: The method used to provide the JSON database schema to the client has been renamed. Change `client.cacheSchema(schema)` to `client.setSchema(schema)`.
+- **Renamed `getFileData` to `getFileBytes`**: The method in the `files` service to retrieve file bytes directly has been renamed. Change `client.files.getFileData(...)` to `client.files.getFileBytes(...)`.
+
 ## 0.3.17
 
 ### Dependencies

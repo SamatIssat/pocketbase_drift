@@ -375,7 +375,7 @@ class $PocketBase extends PocketBase with WidgetsBindingObserver {
     );
   }
 
-  Future<void> cacheSchema(String jsonSchema) async {
+  Future<void> setSchema(String jsonSchema) async {
     try {
       final schema = (jsonDecode(jsonSchema) as List)
           .map((item) => item as Map<String, dynamic>)

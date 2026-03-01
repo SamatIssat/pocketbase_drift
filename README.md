@@ -80,7 +80,7 @@ Add the following packages to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  pocketbase_drift: ^0.3.17 # Use the latest version
+  pocketbase_drift: ^0.4.0 # Use the latest version
 ```
 
 ### 2. Initialize the Client
@@ -95,7 +95,7 @@ Replace a standard `PocketBase` client with a `$PocketBase.database` client. It'
 + final client = $PocketBase.database('http://127.0.0.1:8090');
 ```
 
-### 3. Cache the Database Schema (Enable Offline Records)
+### 3. Set the Database Schema (Enable Offline Records)
 
 To enable the offline caching functionality for records, you must provide the database schema to the client. This allows the local database to understand your collection structures for validation and relation expansion without needing to contact the server.
 
@@ -105,9 +105,9 @@ First, download your `pb_schema.json` file from the PocketBase Admin UI (`Settin
 // 1. Load the schema from your assets
 final schema = await rootBundle.loadString('assets/pb_schema.json');
 
-// 2. Initialize the client and cache the schema
+// 2. Initialize the client and set the schema
 final client = $PocketBase.database('http://127.0.0.1:8090')
-  ..cacheSchema(schema);
+  ..setSchema(schema);
 ```
 
 ### 4. Web Setup
@@ -406,7 +406,7 @@ Image(
 );
 
 // Or get the file bytes directly
-final bytes = await client.files.getFileData(
+final bytes = await client.files.getFileBytes(
   recordId: postRecord.id, 
   recordCollectionName: postRecord.collectionName, 
   fileName: postRecord.get('my_image_field'),

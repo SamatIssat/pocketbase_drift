@@ -16,7 +16,7 @@ class $FileService extends FileService {
   /// This method centralizes the cache-or-network logic for files.
   /// It follows the principle that stale cached data is better than no data
   /// when the network is unavailable.
-  Future<Uint8List> getFileData({
+  Future<Uint8List> getFileBytes({
     required String recordId,
     required String recordCollectionName,
     required String filename,

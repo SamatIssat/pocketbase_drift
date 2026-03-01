@@ -110,7 +110,7 @@ class PocketBaseImageProvider extends ImageProvider<PocketBaseImageProvider> {
   Future<Uint8List> download() async {
     // The image provider's entire cache/network logic is now handled by the FileService.
     // We use a network-first policy by default for images to ensure they are up-to-date.
-    return client.files.getFileData(
+    return client.files.getFileBytes(
       recordId: recordId,
       recordCollectionName: recordCollectionName,
       filename: filename,

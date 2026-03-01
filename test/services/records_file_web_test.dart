@@ -105,7 +105,7 @@ void main() {
 
       // Act:
       // Request the file. This should trigger a network fetch as the cache is empty.
-      final downloadedBytes = await client.files.getFileData(
+      final downloadedBytes = await client.files.getFileBytes(
           recordId: dummyRecord.id,
           recordCollectionName: dummyRecord.collectionName,
           filename: dummyFilename);
@@ -146,7 +146,7 @@ void main() {
       // Request the file. Because it exists in the cache, it should be returned
       // directly without a network request. We use cacheAndNetwork policy to simulate
       // a real-world scenario where the app would try but fail to connect.
-      final cachedBytes = await client.files.getFileData(
+      final cachedBytes = await client.files.getFileBytes(
           recordId: dummyRecord.id,
           recordCollectionName: dummyRecord.collectionName,
           filename: dummyFilename);

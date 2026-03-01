@@ -367,7 +367,7 @@ void main() {
         );
 
         // Request with cacheOnly should return expired file, not throw
-        final retrievedBytes = await client.files.getFileData(
+        final retrievedBytes = await client.files.getFileBytes(
           recordId: testRecordId,
           recordCollectionName: 'test',
           filename: testFileName,
@@ -401,7 +401,7 @@ void main() {
         );
 
         // Request with cacheAndNetwork should try network, fail, then return expired cache
-        final retrievedBytes = await failingClient.files.getFileData(
+        final retrievedBytes = await failingClient.files.getFileBytes(
           recordId: testRecordId,
           recordCollectionName: 'test',
           filename: testFileName,
@@ -414,7 +414,7 @@ void main() {
       test('cacheOnly throws when no cached file exists', () async {
         // Request a file that doesn't exist in cache with cacheOnly
         expect(
-          () => client.files.getFileData(
+          () => client.files.getFileBytes(
             recordId: 'nonexistent_record',
             recordCollectionName: 'test',
             filename: 'nonexistent_file.txt',
