@@ -656,6 +656,15 @@ class DataBase extends _$DataBase {
           'id': id, // Ensure ID is always set
         };
 
+        // If 'updated' field wasn't explicitly provided in the update,
+        // we generate a new one since this is a local mutation.
+        if (!data.containsKey('updated') ||
+            data['updated'] == null ||
+            data['updated'] == '') {
+          mergedData['updated'] =
+              DateTime.now().toUtc().toIso8601String().replaceFirst('T', ' ');
+        }
+
         return $create(
           service,
           mergedData,
@@ -665,9 +674,17 @@ class DataBase extends _$DataBase {
     }
 
     // Fallback: If no existing record found or validation is disabled
+    final fallbackData = <String, dynamic>{...data, 'id': id};
+    if (!data.containsKey('updated') ||
+        data['updated'] == null ||
+        data['updated'] == '') {
+      fallbackData['updated'] =
+          DateTime.now().toUtc().toIso8601String().replaceFirst('T', ' ');
+    }
+
     return $create(
       service,
-      {...data, 'id': id},
+      fallbackData,
       validate: validate,
     );
   }
@@ -815,8 +832,8 @@ class DataBase extends _$DataBase {
       data: data,
       recordId: recordId,
       expiration: expires != null ? Value(expires) : const Value.absent(),
-      created: Value(DateTime.now().toIso8601String()),
-      updated: Value(DateTime.now().toIso8601String()),
+      created: Value(DateTime.now().toUtc().toIso8601String()),
+      updated: Value(DateTime.now().toUtc().toIso8601String()),
     );
     return await into(blobFiles).insertReturning(
       item,
@@ -1067,7 +1084,7 @@ class DataBase extends _$DataBase {
     final companion = CachedResponsesCompanion.insert(
       requestKey: key,
       responseData: jsonData,
-      cachedAt: Value(DateTime.now()),
+      cachedAt: Value(DateTime.now().toUtc()),
     );
     // Use insertOrReplace to handle updates to an existing cached item.
     await into(cachedResponses)
@@ -1162,7 +1179,7 @@ class DataBase extends _$DataBase {
   ///
   /// Returns the number of file blobs deleted.
   Future<int> cleanupExpiredFiles() async {
-    final now = DateTime.now();
+    final now = DateTime.now().toUtc();
     final result = await (delete(blobFiles)
           ..where((tbl) => tbl.expiration.isSmallerThanValue(now)))
         .go();

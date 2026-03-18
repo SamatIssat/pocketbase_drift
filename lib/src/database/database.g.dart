@@ -880,7 +880,7 @@ class $CachedResponsesTable extends CachedResponses
       'cachedAt', aliasedName, false,
       type: DriftSqlType.dateTime,
       requiredDuringInsert: false,
-      clientDefault: () => DateTime.now());
+      clientDefault: () => DateTime.now().toUtc());
   @override
   List<GeneratedColumn> get $columns => [requestKey, responseData, cachedAt];
   @override

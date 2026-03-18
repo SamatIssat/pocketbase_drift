@@ -165,7 +165,7 @@ class $PocketBase extends PocketBase with WidgetsBindingObserver {
       );
     }
 
-    final cutoffDate = DateTime.now().subtract(effectiveTtl);
+    final cutoffDate = DateTime.now().toUtc().subtract(effectiveTtl);
 
     logger.info('Running maintenance (TTL: ${effectiveTtl.inDays} days)...');
 

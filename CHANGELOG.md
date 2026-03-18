@@ -4,6 +4,15 @@
 
 - **Network Fetching State for Streams** - Introduced `QueryState<T>` wrapper and two new methods `watchRecordsState` and `watchRecordState`. This allows offline-first apps to distinguish between an "empty cache while fetching data" and a "truly empty database result", enabling them to show loading indicators during initial network requests instead of instantly flashing empty states.
 
+### Improvements
+
+- **Stream Performance Optimization (Distinct Results)** - Added a `distinctResults` parameter (enabled by default) to `watchRecord`, `watchRecords`, `watchRecordState`, and `watchRecordsState` ([#13](https://github.com/DrDejaVuNG/pocketbase_drift/issues/13)). This prevents huge, unnecessary Riverpod/Stream rebuild fan-outs by natively suppressing stream emissions when a SQLite cache update does not actually change the underlying query's effective result set (validated elegantly using `id` + `updated` fields).
+
+### Bug Fixes
+
+- **Local Modification Timestamps** - Fixed an issue where offline mutations via `$update` failed to automatically bump the local `updated` property. Local modifications now cleanly generate a new UTC timestamp if one isn't explicitly provided, ensuring cache invalidations and UI streams work smoothly.
+- **Strict UTC Standardization** - Fixed and standardized all internally generated timestamps (cache TTLs, expiration dates, schema insertions, local creations, and file caches) to strictly use `DateTime.now().toUtc()`. This ensures absolute compatibility with PocketBase's ISO8601 UTC server expectations and prevents time-zone drift synchronization anomalies.
+
 ## 0.4.0
 
 **BREAKING CHANGES**: Method names have been updated for consistency and clarity.

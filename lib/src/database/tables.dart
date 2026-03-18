@@ -38,7 +38,7 @@ class CachedResponses extends Table {
   /// The timestamp of when this cache entry was created. Useful for
   /// future implementations of Time-To-Live (TTL) caching.
   DateTimeColumn get cachedAt =>
-      dateTime().clientDefault(() => DateTime.now())();
+      dateTime().clientDefault(() => DateTime.now().toUtc())();
 
   @override
   Set<Column<Object>>? get primaryKey => {requestKey};

@@ -330,6 +330,7 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
     String? expand,
     String? fields,
     RequestPolicy? requestPolicy,
+    bool distinctResults = true,
   }) {
     final policy = resolvePolicy(requestPolicy);
     UnsubscribeFunc? unsub;
@@ -358,7 +359,7 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
         }
       },
     );
-    final stream = client.db
+    var stream = client.db
         .$query(
           service,
           filter: "id = '$id'",
@@ -367,6 +368,15 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
         )
         .map(itemFactoryFunc)
         .watchSingleOrNull();
+
+    if (distinctResults) {
+      stream = stream.distinct((prev, next) {
+        if (prev == null && next == null) return true;
+        if (prev == null || next == null) return false;
+        return prev.id == next.id && prev.get('updated') == next.get('updated');
+      });
+    }
+
     controller.addStream(stream);
     return controller.stream;
   }
@@ -378,6 +388,7 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
     int? limit,
     String? fields,
     RequestPolicy? requestPolicy,
+    bool distinctResults = true,
   }) {
     final policy = resolvePolicy(requestPolicy);
     UnsubscribeFunc? unsub;
@@ -413,7 +424,7 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
         }
       },
     );
-    final stream = client.db
+    var stream = client.db
         .$query(
           service,
           filter: filter,
@@ -424,6 +435,20 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
         )
         .map(itemFactoryFunc)
         .watch();
+
+    if (distinctResults) {
+      stream = stream.distinct((prev, next) {
+        if (prev.length != next.length) return false;
+        for (var i = 0; i < prev.length; i++) {
+          if (prev[i].id != next[i].id ||
+              prev[i].get('updated') != next[i].get('updated')) {
+            return false;
+          }
+        }
+        return true;
+      });
+    }
+
     controller.addStream(stream);
     return controller.stream;
   }
@@ -433,6 +458,7 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
     String? expand,
     String? fields,
     RequestPolicy? requestPolicy,
+    bool distinctResults = true,
   }) {
     final policy = resolvePolicy(requestPolicy);
     UnsubscribeFunc? unsub;
@@ -500,6 +526,19 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
         }
       },
     );
+
+    if (distinctResults) {
+      return controller.stream.distinct((prev, next) {
+        if (prev.isFetchingNetwork != next.isFetchingNetwork) return false;
+        final pData = prev.data;
+        final nData = next.data;
+        if (pData == null && nData == null) return true;
+        if (pData == null || nData == null) return false;
+        return pData.id == nData.id &&
+            pData.get('updated') == nData.get('updated');
+      });
+    }
+
     return controller.stream;
   }
 
@@ -510,6 +549,7 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
     int? limit,
     String? fields,
     RequestPolicy? requestPolicy,
+    bool distinctResults = true,
   }) {
     final policy = resolvePolicy(requestPolicy);
     UnsubscribeFunc? unsub;
@@ -586,6 +626,23 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
         }
       },
     );
+
+    if (distinctResults) {
+      return controller.stream.distinct((prev, next) {
+        if (prev.isFetchingNetwork != next.isFetchingNetwork) return false;
+        final pData = prev.data;
+        final nData = next.data;
+        if (pData.length != nData.length) return false;
+        for (var i = 0; i < pData.length; i++) {
+          if (pData[i].id != nData[i].id ||
+              pData[i].get('updated') != nData[i].get('updated')) {
+            return false;
+          }
+        }
+        return true;
+      });
+    }
+
     return controller.stream;
   }
 }

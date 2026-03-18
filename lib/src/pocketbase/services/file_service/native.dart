@@ -37,7 +37,7 @@ class $FileService extends FileService {
     if (requestPolicy.isCache) {
       cached = await client.db.getFile(record.id, filename).getSingleOrNull();
       if (cached != null) {
-        final now = DateTime.now();
+        final now = DateTime.now().toUtc();
         cacheIsExpired =
             cached.expiration != null && cached.expiration!.isBefore(now);
 
@@ -74,8 +74,9 @@ class $FileService extends FileService {
         // Save to cache after a successful network download if policy allows
         if (requestPolicy.isCache) {
           await client.db.setFile(record.id, filename, bytes,
-              expires:
-                  expireAfter != null ? DateTime.now().add(expireAfter) : null);
+              expires: expireAfter != null
+                  ? DateTime.now().toUtc().add(expireAfter)
+                  : null);
         }
         return bytes;
       } catch (e) {
