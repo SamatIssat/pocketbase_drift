@@ -29,6 +29,7 @@ class $AuthStore extends AsyncAuthStore {
     return $AuthStore(
       save: (data) async => await prefs.setString(key, data),
       initial: prefs.getString(key),
+      clear: () async => await prefs.remove(key),
       clearOnLogout: clearOnLogout,
     );
   }

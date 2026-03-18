@@ -80,7 +80,7 @@ Add the following packages to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  pocketbase_drift: ^0.4.0 # Use the latest version
+  pocketbase_drift: ^0.4.1 # Use the latest version
 ```
 
 ### 2. Initialize the Client
@@ -252,6 +252,18 @@ final posts = await client.collection('posts').getFullList(
 
 // Get a single record
 final post = await client.collection('posts').getOne('RECORD_ID');
+
+// Watch records with network fetching state (useful to avoid UI flashing)
+final stateStream = client.collection('posts').watchRecordsState(
+  requestPolicy: RequestPolicy.cacheAndNetwork,
+);
+stateStream.listen((state) {
+  if (state.data.isEmpty && state.isFetchingNetwork) {
+    print('Cache is empty, but we are fetching from the network... show a loading spinner!');
+  } else {
+    print('Data loaded: ${state.data.length} posts');
+  }
+});
 ```
 
 ### Expanding Relations

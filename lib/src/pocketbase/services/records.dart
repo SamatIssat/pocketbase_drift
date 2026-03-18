@@ -5,6 +5,26 @@ import 'package:http/http.dart' as http;
 
 import 'package:pocketbase_drift/pocketbase_drift.dart';
 
+class QueryState<T> {
+  const QueryState({
+    required this.data,
+    required this.isFetchingNetwork,
+  });
+
+  final T data;
+  final bool isFetchingNetwork;
+
+  QueryState<T> copyWith({
+    T? data,
+    bool? isFetchingNetwork,
+  }) {
+    return QueryState<T>(
+      data: data ?? this.data,
+      isFetchingNetwork: isFetchingNetwork ?? this.isFetchingNetwork,
+    );
+  }
+}
+
 class $RecordService extends RecordService with ServiceMixin<RecordModel> {
   $RecordService(this.client, this.service) : super(client, service);
 
@@ -405,6 +425,167 @@ class $RecordService extends RecordService with ServiceMixin<RecordModel> {
         .map(itemFactoryFunc)
         .watch();
     controller.addStream(stream);
+    return controller.stream;
+  }
+
+  Stream<QueryState<RecordModel?>> watchRecordState(
+    String id, {
+    String? expand,
+    String? fields,
+    RequestPolicy? requestPolicy,
+  }) {
+    final policy = resolvePolicy(requestPolicy);
+    UnsubscribeFunc? unsub;
+    bool isFetchingNetwork = policy.isNetwork;
+    StreamSubscription<RecordModel?>? dbSubscription;
+    RecordModel? latestData;
+
+    late final StreamController<QueryState<RecordModel?>> controller;
+    controller = StreamController<QueryState<RecordModel?>>(
+      onListen: () async {
+        if (policy.isNetwork) {
+          try {
+            unsub = await subscribe(id, (e) {});
+          } catch (e) {
+            client.logger
+                .warning('Error subscribing to record $service/$id', e);
+          }
+        }
+
+        final stream = client.db
+            .$query(
+              service,
+              filter: "id = '$id'",
+              expand: expand,
+              fields: fields,
+            )
+            .map(itemFactoryFunc)
+            .watchSingleOrNull();
+
+        dbSubscription = stream.listen((data) {
+          latestData = data;
+          if (!controller.isClosed) {
+            controller.add(QueryState(
+              data: data,
+              isFetchingNetwork: isFetchingNetwork,
+            ));
+          }
+        });
+
+        try {
+          await getOneOrNull(id,
+              expand: expand, fields: fields, requestPolicy: policy);
+        } finally {
+          if (isFetchingNetwork) {
+            isFetchingNetwork = false;
+            if (!controller.isClosed) {
+              controller.add(QueryState(
+                data: latestData,
+                isFetchingNetwork: false,
+              ));
+            }
+          }
+        }
+      },
+      onCancel: () async {
+        await dbSubscription?.cancel();
+        if (policy.isNetwork) {
+          try {
+            await unsub?.call();
+          } catch (e) {
+            client.logger.fine(
+                'Error unsubscribing from record $service/$id (may be intentional)',
+                e);
+          }
+        }
+      },
+    );
+    return controller.stream;
+  }
+
+  Stream<QueryState<List<RecordModel>>> watchRecordsState({
+    String? expand,
+    String? filter,
+    String? sort,
+    int? limit,
+    String? fields,
+    RequestPolicy? requestPolicy,
+  }) {
+    final policy = resolvePolicy(requestPolicy);
+    UnsubscribeFunc? unsub;
+    bool isFetchingNetwork = policy.isNetwork;
+    StreamSubscription<List<RecordModel>>? dbSubscription;
+    List<RecordModel> latestData = [];
+
+    late final StreamController<QueryState<List<RecordModel>>> controller;
+    controller = StreamController<QueryState<List<RecordModel>>>(
+      onListen: () async {
+        if (policy.isNetwork) {
+          try {
+            unsub = await subscribe('*', (e) {});
+          } catch (e) {
+            client.logger
+                .warning('Error subscribing to collection $service', e);
+          }
+        }
+
+        final stream = client.db
+            .$query(
+              service,
+              filter: filter,
+              expand: expand,
+              sort: sort,
+              limit: limit,
+              fields: fields,
+            )
+            .map(itemFactoryFunc)
+            .watch();
+
+        dbSubscription = stream.listen((data) {
+          latestData = data;
+          if (!controller.isClosed) {
+            controller.add(QueryState(
+              data: data,
+              isFetchingNetwork: isFetchingNetwork,
+            ));
+          }
+        });
+
+        try {
+          final items = await getFullList(
+            requestPolicy: policy,
+            filter: filter,
+            expand: expand,
+            sort: sort,
+            fields: fields,
+          );
+          client.logger.fine(
+              'Realtime initial full list for "$service" [${policy.name}]: ${items.length} items');
+        } finally {
+          if (isFetchingNetwork) {
+            isFetchingNetwork = false;
+            if (!controller.isClosed) {
+              controller.add(QueryState(
+                data: latestData,
+                isFetchingNetwork: false,
+              ));
+            }
+          }
+        }
+      },
+      onCancel: () async {
+        await dbSubscription?.cancel();
+        if (policy.isNetwork) {
+          try {
+            await unsub?.call();
+          } catch (e) {
+            client.logger.fine(
+                'Error unsubscribing from collection $service (may be intentional)',
+                e);
+          }
+        }
+      },
+    );
     return controller.stream;
   }
 }

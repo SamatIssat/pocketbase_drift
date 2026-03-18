@@ -1,3 +1,9 @@
+## 0.4.1
+
+### New Features
+
+- **Network Fetching State for Streams** - Introduced `QueryState<T>` wrapper and two new methods `watchRecordsState` and `watchRecordState`. This allows offline-first apps to distinguish between an "empty cache while fetching data" and a "truly empty database result", enabling them to show loading indicators during initial network requests instead of instantly flashing empty states.
+
 ## 0.4.0
 
 **BREAKING CHANGES**: Method names have been updated for consistency and clarity.
